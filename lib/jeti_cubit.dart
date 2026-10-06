@@ -13,6 +13,8 @@ class JetiState {
   final double y;
   final double photometricY;
   final double cct;
+  final double flickerFrequency;
+  final bool isFlickerEnabled;
   final DateTime? lastUpdate;
   final String statusMessage;
 
@@ -23,6 +25,8 @@ class JetiState {
     this.y = 0.0,
     this.photometricY = 0.0,
     this.cct = 0.0,
+    this.flickerFrequency = 0.0,
+    this.isFlickerEnabled = false, // Default to false to keep loop fast
     this.lastUpdate,
     this.statusMessage = 'Disconnected',
   });
@@ -38,6 +42,8 @@ class JetiState {
     double? y,
     double? photometricY,
     double? cct,
+    double? flickerFrequency,
+    bool? isFlickerEnabled,
     DateTime? lastUpdate,
     String? statusMessage,
   }) {
@@ -48,6 +54,8 @@ class JetiState {
       y: y ?? this.y,
       photometricY: photometricY ?? this.photometricY,
       cct: cct ?? this.cct,
+      flickerFrequency: flickerFrequency ?? this.flickerFrequency,
+      isFlickerEnabled: isFlickerEnabled ?? this.isFlickerEnabled,
       lastUpdate: lastUpdate ?? this.lastUpdate,
       statusMessage: statusMessage ?? this.statusMessage,
     );
@@ -248,6 +256,10 @@ class JetiCubit extends Cubit<JetiState> {
     }
   }
 
+  void toggleFlicker(bool enabled) {
+    emit(state.copyWith(isFlickerEnabled: enabled));
+  }
+
   Future<void> _startProceduralLoop() async {
     _isLooping = true;
 
@@ -302,6 +314,21 @@ class JetiCubit extends Cubit<JetiState> {
         final cctResponse = await _readUntilCR();
         double newCct = double.tryParse(cctResponse) ?? state.cct;
 
+        // Conditionally Measure Flicker
+        double newFlicker = state.flickerFrequency;
+        if (state.isFlickerEnabled) {
+          _clearBuffer();
+          emit(state.copyWith(statusMessage: 'Measuring Flicker...'));
+          await _sendCommand("*MEAS:FLIC");
+          await _waitForMeasurementComplete();
+          final flicResponse = await _readUntilCR();
+
+          if (flicResponse.isNotEmpty) {
+            final valStr = flicResponse.replaceAll(RegExp(r'[^\d.]'), '');
+            newFlicker = double.tryParse(valStr) ?? state.flickerFrequency;
+          }
+        }
+
         // Push parsed values to the UI
         emit(
           state.copyWith(
@@ -309,6 +336,7 @@ class JetiCubit extends Cubit<JetiState> {
             y: newY,
             photometricY: newPhotoY,
             cct: newCct,
+            flickerFrequency: newFlicker,
             lastUpdate: DateTime.now(),
             statusMessage: 'Looping...',
           ),

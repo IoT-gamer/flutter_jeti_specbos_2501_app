@@ -216,6 +216,64 @@ class DashboardScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Flicker Frequency Container
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.only(
+                    left: 20,
+                    right: 10,
+                    top: 10,
+                    bottom: 20,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1F222A),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 10),
+                            child: Text(
+                              'Flicker Frequency',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          Switch(
+                            value: state.isFlickerEnabled,
+                            activeColor: Colors.tealAccent,
+                            onChanged: (bool value) {
+                              context.read<JetiCubit>().toggleFlicker(value);
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        state.isFlickerEnabled
+                            ? (state.flickerFrequency > 0
+                                  ? '${state.flickerFrequency.toStringAsFixed(2)} Hz'
+                                  : 'Waiting...')
+                            : 'Disabled',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: state.isFlickerEnabled
+                              ? Colors.white
+                              : Colors.white38,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

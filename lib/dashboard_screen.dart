@@ -53,6 +53,20 @@ class DashboardScreen extends StatelessWidget {
             title: const Text('JETI specbos 2501 Monitor'),
             actions: [
               IconButton(
+                icon: Icon(
+                  state.isRecording
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                ),
+                color: state.isRecording ? Colors.redAccent : Colors.white,
+                tooltip: state.isRecording
+                    ? 'Stop Recording'
+                    : 'Start Recording',
+                onPressed: () {
+                  context.read<JetiCubit>().toggleRecording(!state.isRecording);
+                },
+              ),
+              IconButton(
                 icon: const Icon(Icons.analytics_outlined),
                 tooltip: 'Chromaticity Plot',
                 onPressed: () {

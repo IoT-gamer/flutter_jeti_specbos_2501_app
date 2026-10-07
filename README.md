@@ -11,6 +11,7 @@ A Flutter application designed to interface wirelessly with the **JETI specbos 2
 * **Real-Time Telemetry:** Continuous asynchronous polling loop executing dark and light measurement scans (`*MEAS:DARK`, `*MEAS:LIGHT`).
 * **Colorimetry & Photometry:** Extracts and visualizes CIE 1931 xy chromaticity coordinates, Photometric values (Luminance/Illuminance), Correlated Color Temperature (CCT), and calculated Tristimulus (X, Y, Z) data.
 * **Flicker Detection:** On-demand flicker frequency measurement (`*MEAS:FLIC`) integrated with a UI toggle to prevent blocking the high-speed colorimetry polling loop.
+* **Data Recording & Export:** Toggleable data logging that buffers timestamps, colorimetry, photometry, and flicker data, exporting it to the device storage as a formatted JSON file using the native file picker.
 * **Diffuser Auto-Calibration:** Automatically configures the spectroradiometer to apply the correct calibration profile (`*PARA:CALIBN 0`) when a diffuser attachment is detected for Lux measurements.
 * **CIE 1931 Visualization:** Features a dynamic chromaticity plot utilizing a Flutter `CustomPainter` to map real-time (x, y) coordinates onto the standard CIE 1931 color space diagram.
 * **Reactive Architecture:** Built on `flutter_bloc` utilizing a Cubit state machine to separate the serial byte-parsing logic and asynchronous SCPI handshakes from the UI presentation layer.

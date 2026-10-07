@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_classic_bluetooth/flutter_classic_bluetooth.dart';
@@ -15,6 +16,7 @@ class JetiState {
   final double cct;
   final double flickerFrequency;
   final bool isFlickerEnabled;
+  final bool isRecording;
   final DateTime? lastUpdate;
   final String statusMessage;
 
@@ -27,6 +29,7 @@ class JetiState {
     this.cct = 0.0,
     this.flickerFrequency = 0.0,
     this.isFlickerEnabled = false, // Default to false to keep loop fast
+    this.isRecording = false,
     this.lastUpdate,
     this.statusMessage = 'Disconnected',
   });
@@ -44,6 +47,7 @@ class JetiState {
     double? cct,
     double? flickerFrequency,
     bool? isFlickerEnabled,
+    bool? isRecording,
     DateTime? lastUpdate,
     String? statusMessage,
   }) {
@@ -56,6 +60,7 @@ class JetiState {
       cct: cct ?? this.cct,
       flickerFrequency: flickerFrequency ?? this.flickerFrequency,
       isFlickerEnabled: isFlickerEnabled ?? this.isFlickerEnabled,
+      isRecording: isRecording ?? this.isRecording,
       lastUpdate: lastUpdate ?? this.lastUpdate,
       statusMessage: statusMessage ?? this.statusMessage,
     );
@@ -67,6 +72,7 @@ class JetiCubit extends Cubit<JetiState> {
   BtcConnection? _connection;
   StreamSubscription? _scanSubscription;
   StreamSubscription? _inputSubscription;
+  final List<Map<String, dynamic>> _recordBuffer = [];
 
   bool _isLooping = false;
   String _rxBuffer = "";
@@ -338,14 +344,81 @@ class JetiCubit extends Cubit<JetiState> {
             cct: newCct,
             flickerFrequency: newFlicker,
             lastUpdate: DateTime.now(),
-            statusMessage: 'Looping...',
+            statusMessage: state.isRecording ? 'Recording...' : 'Looping...',
           ),
         );
+
+        // Append to JSON buffer if recording is active
+        if (state.isRecording) {
+          _recordBuffer.add({
+            'timestamp': DateTime.now().toIso8601String(),
+            'x': newX,
+            'y': newY,
+            'photometricY': newPhotoY,
+            'cct': newCct,
+            'flickerFrequency': newFlicker,
+          });
+        }
       } catch (e) {
         debugPrint("Loop error: $e");
         emit(state.copyWith(statusMessage: 'Loop Error: $e'));
         await Future.delayed(const Duration(seconds: 2)); // Backoff on error
       }
+    }
+  }
+
+  Future<void> toggleRecording(bool start) async {
+    if (start) {
+      _recordBuffer.clear();
+      emit(
+        state.copyWith(
+          isRecording: true,
+          statusMessage: 'Recording started...',
+        ),
+      );
+    } else {
+      emit(
+        state.copyWith(
+          isRecording: false,
+          statusMessage: 'Recording stopped. Saving...',
+        ),
+      );
+      await _saveRecordedData();
+    }
+  }
+
+  Future<void> _saveRecordedData() async {
+    if (_recordBuffer.isEmpty) {
+      emit(state.copyWith(statusMessage: 'No data to save.'));
+      return;
+    }
+
+    try {
+      emit(state.copyWith(statusMessage: 'Preparing data...'));
+
+      // Convert the buffer to a formatted JSON string, then to UTF-8 bytes
+      final jsonString = const JsonEncoder.withIndent('  ')
+          .convert(_recordBuffer);
+      final bytes = Uint8List.fromList(utf8.encode(jsonString));
+
+      // Prompt user for save location and write the bytes directly
+      Uri? savedUri = await FilePicker.saveFile(
+        dialogTitle: 'Save Measurement Data',
+        fileName: 'jeti_data_${DateTime.now().millisecondsSinceEpoch}.json',
+        bytes: bytes,
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (savedUri != null) {
+        emit(state.copyWith(statusMessage: 'Data saved successfully.'));
+      } else {
+        emit(state.copyWith(statusMessage: 'Save cancelled.'));
+      }
+    } catch (e) {
+      emit(state.copyWith(statusMessage: 'Failed to save: $e'));
+    } finally {
+      _recordBuffer.clear();
     }
   }
 
